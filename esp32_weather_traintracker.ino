@@ -64,7 +64,7 @@ void setup() {
 JSONVar jsonParser(String apiPath) {
   Serial.println(apiPath);
   jsonBuffer = httpGETRequest(apiPath.c_str());
-  Serial.println(jsonBuffer);
+  // Serial.println(jsonBuffer);
 
   return JSON.parse(jsonBuffer);
 }
@@ -300,6 +300,110 @@ void trainTracker() {
 
 }
 
+void busTracker(String busStopId) {
+  // CTA TRACKER API
+
+  // String ctaBusKey = cta_bus_key;
+  String ctaBusKey = cta_bus_key;
+  String busApiPath = "http://www.ctabustracker.com/bustime/api/v2/getpredictions?key=" + ctaBusKey + "&stpid=" + busStopId + "&format=json";
+
+
+  JSONVar eastBoundObject = jsonParser(busApiPath);
+
+  // JSON.typeof(jsonVar) can be used to get the type of the var
+  if (JSON.typeof(eastBoundObject) == "undefined") {
+    Serial.println("Parsing Eastbound Input failed!");
+    return;
+  }
+
+  /*
+  Slide 1:
+  Route 60 Eastbound
+  Bus #000              DUE
+  Bus #002             2min
+
+  Slide 2:
+  Route 60 Westbound
+  Bus #000              DUE
+  Bus #002            25min
+  */
+
+  // If there is an Error (no arrival times)
+  // display error message
+
+  if (eastBoundObject["bustime-response"]["error"]) {
+    String routeNum = JSON.stringify(eastBoundObject["bustime-response"]["error"]["rt"]);
+    routeNum.replace("\"", "");
+    String stopId = JSON.stringify(eastBoundObject["bustime-response"]["error"]["stpid"]);
+    stopId.replace("\"", "");
+    String msg = JSON.stringify(eastBoundObject["bustime-response"]["error"]["msg"]);
+    stopId.replace("\"", "");
+
+    String displayMessage1 = "Bus Route " + routeNum;
+    String displayMessage2 = "Stop ID #" + stopId;
+
+    Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
+    Heltec.display->setFont(ArialMT_Plain_16);
+    Heltec.display->drawString(0, 0, displayMessage1);
+    Heltec.display->drawString(0, 16, displayMessage2);
+    Heltec.display->drawString(0, 32, msg);
+  } 
+  else {
+    String stopName = JSON.stringify(eastBoundObject["bustime-response"]["prd"][0]["stpnm"]);
+    stopName.replace("\"", "");
+
+    String direction = JSON.stringify(eastBoundObject["bustime-response"]["prd"][0]["rtdir"]);
+    direction.replace("\"", "");
+
+    String route = JSON.stringify(eastBoundObject["bustime-response"]["prd"][0]["rt"]);
+    route.replace("\"", "");
+
+    String routeInfo = "Route " + route + " " + direction;
+
+
+    Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
+    Heltec.display->setFont(ArialMT_Plain_10);
+    Heltec.display->drawString(0, 0, stopName);
+    Heltec.display->drawString(0, 10, routeInfo);
+    
+    int length = eastBoundObject["bustime-response"]["prd"].length();
+
+    for (int i = 0; i < length; i++) {
+      String timeStamp = "Time: " + JSON.stringify(eastBoundObject["bustime-response"]["prd"][i]["tmstmp"]);
+      String busId = JSON.stringify(eastBoundObject["bustime-response"]["prd"][i]["vid"]);
+      busId.replace("\"", "");
+      String busLine = "Bus #" + busId;
+      
+      String minutesLeft = JSON.stringify(eastBoundObject["bustime-response"]["prd"][i]["prdctdn"]);
+      minutesLeft.replace("\"", "");
+
+      Serial.println("------------BUS TRACKER ------------");
+      Serial.println("Array Length: " + String(length));
+      Serial.println(stopName);
+      Serial.println(route);
+      // Serial.println(destination);
+      // Serial.println(arrivalTime);
+      Serial.println(minutesLeft);
+
+      // Display to OLED
+      Heltec.display->drawString(0, i + 2 * 10, busLine);
+      Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
+      Heltec.display->drawString(128, i + 2 * 10, minutesLeft);
+    }
+  }
+
+  Heltec.display->display();
+
+}
+
+void busTrackerEastbound() {
+  busTracker("6339"); // East bound
+}
+
+void busTrackerWestbound() {
+  busTracker("6373"); // East bound
+}
+
 void drawTextAlignmentDemo() {
     // Text alignment demo
   Heltec.display->setFont(ArialMT_Plain_10);
@@ -317,7 +421,7 @@ void drawTextAlignmentDemo() {
   Heltec.display->drawString(128, 33, "Right aligned (128,33)");
 }
 
-Demo demos[] = {trainTracker, weather};
+Demo demos[] = {busTrackerEastbound, busTrackerWestbound, trainTracker, weather};
 int demoLength = (sizeof(demos) / sizeof(Demo));
 long timeSinceLastModeSwitch = 0;
 
