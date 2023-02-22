@@ -386,9 +386,9 @@ void busTracker(String busStopId) {
       Serial.println(minutesLeft);
 
       // Display to OLED
-      Heltec.display->drawString(0, i + 2 * 10, busLine);
+      Heltec.display->drawString(0, (i + 2) * 10, busLine);
       Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
-      Heltec.display->drawString(128, i + 2 * 10, minutesLeft);
+      Heltec.display->drawString(128, (i + 2) * 10, minutesLeft);
     }
   }
 
